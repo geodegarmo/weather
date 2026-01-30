@@ -35,6 +35,20 @@ US_STATES = {
 }
 
 
+def is_new_click(click_data: dict | None, last_click_key: str) -> bool:
+    """Check if this is a new click that we haven't processed yet."""
+    if not click_data:
+        return False
+
+    current_click = (click_data.get("lat"), click_data.get("lng"))
+    last_click = st.session_state.get(last_click_key)
+
+    if current_click != last_click:
+        st.session_state[last_click_key] = current_click
+        return True
+    return False
+
+
 async def make_nws_request(url: str) -> dict[str, Any] | None:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/geo+json"}
     async with httpx.AsyncClient() as client:
@@ -144,7 +158,7 @@ with tab2:
             key="forecast_map_picker",
         )
 
-        if map_data and map_data.get("last_clicked"):
+        if map_data and is_new_click(map_data.get("last_clicked"), "forecast_last_click"):
             clicked = map_data["last_clicked"]
             st.session_state.forecast_lat = clicked["lat"]
             st.session_state.forecast_lon = clicked["lng"]
@@ -152,23 +166,26 @@ with tab2:
 
     with col_controls:
         st.subheader("Selected Location")
-        new_lat = st.number_input(
-            "Latitude",
-            value=st.session_state.forecast_lat,
-            format="%.4f",
-            key="forecast_lat_input",
-        )
-        new_lon = st.number_input(
-            "Longitude",
-            value=st.session_state.forecast_lon,
-            format="%.4f",
-            key="forecast_lon_input",
-        )
+        st.info(f"**Lat:** {st.session_state.forecast_lat:.4f}  \n**Lon:** {st.session_state.forecast_lon:.4f}")
 
-        if new_lat != st.session_state.forecast_lat or new_lon != st.session_state.forecast_lon:
-            st.session_state.forecast_lat = new_lat
-            st.session_state.forecast_lon = new_lon
-            st.rerun()
+        with st.expander("Edit coordinates manually"):
+            new_lat = st.number_input(
+                "Latitude",
+                value=st.session_state.forecast_lat,
+                format="%.4f",
+                key="forecast_lat_input",
+            )
+            new_lon = st.number_input(
+                "Longitude",
+                value=st.session_state.forecast_lon,
+                format="%.4f",
+                key="forecast_lon_input",
+            )
+            if st.button("Update Location", key="forecast_update_btn"):
+                st.session_state.forecast_lat = new_lat
+                st.session_state.forecast_lon = new_lon
+                st.session_state.forecast_last_click = (new_lat, new_lon)
+                st.rerun()
 
         st.caption("NWS forecasts only work for US locations")
 
@@ -221,7 +238,7 @@ with tab3:
             key="model_map_picker",
         )
 
-        if map_data and map_data.get("last_clicked"):
+        if map_data and is_new_click(map_data.get("last_clicked"), "model_last_click"):
             clicked = map_data["last_clicked"]
             st.session_state.model_lat = clicked["lat"]
             st.session_state.model_lon = clicked["lng"]
@@ -229,23 +246,26 @@ with tab3:
 
     with col_controls:
         st.subheader("Selected Location")
-        new_lat = st.number_input(
-            "Latitude",
-            value=st.session_state.model_lat,
-            format="%.4f",
-            key="model_lat_input",
-        )
-        new_lon = st.number_input(
-            "Longitude",
-            value=st.session_state.model_lon,
-            format="%.4f",
-            key="model_lon_input",
-        )
+        st.info(f"**Lat:** {st.session_state.model_lat:.4f}  \n**Lon:** {st.session_state.model_lon:.4f}")
 
-        if new_lat != st.session_state.model_lat or new_lon != st.session_state.model_lon:
-            st.session_state.model_lat = new_lat
-            st.session_state.model_lon = new_lon
-            st.rerun()
+        with st.expander("Edit coordinates manually"):
+            new_lat = st.number_input(
+                "Latitude",
+                value=st.session_state.model_lat,
+                format="%.4f",
+                key="model_lat_input",
+            )
+            new_lon = st.number_input(
+                "Longitude",
+                value=st.session_state.model_lon,
+                format="%.4f",
+                key="model_lon_input",
+            )
+            if st.button("Update Location", key="model_update_btn"):
+                st.session_state.model_lat = new_lat
+                st.session_state.model_lon = new_lon
+                st.session_state.model_last_click = (new_lat, new_lon)
+                st.rerun()
 
         st.caption("Data from Open-Meteo API (works globally)")
 
@@ -297,25 +317,29 @@ with tab4:
 
     with col_controls:
         st.subheader("Map Center")
-        col1, col2 = st.columns(2)
-        with col1:
-            new_lat = st.number_input(
-                "Latitude",
-                value=st.session_state.radar_lat,
-                format="%.4f",
-                key="radar_lat_input",
-            )
-        with col2:
-            new_lon = st.number_input(
-                "Longitude",
-                value=st.session_state.radar_lon,
-                format="%.4f",
-                key="radar_lon_input",
-            )
+        st.info(f"**Lat:** {st.session_state.radar_lat:.4f}  \n**Lon:** {st.session_state.radar_lon:.4f}")
 
-        if new_lat != st.session_state.radar_lat or new_lon != st.session_state.radar_lon:
-            st.session_state.radar_lat = new_lat
-            st.session_state.radar_lon = new_lon
+        with st.expander("Edit coordinates manually"):
+            col1, col2 = st.columns(2)
+            with col1:
+                new_lat = st.number_input(
+                    "Latitude",
+                    value=st.session_state.radar_lat,
+                    format="%.4f",
+                    key="radar_lat_input",
+                )
+            with col2:
+                new_lon = st.number_input(
+                    "Longitude",
+                    value=st.session_state.radar_lon,
+                    format="%.4f",
+                    key="radar_lon_input",
+                )
+            if st.button("Update Location", key="radar_update_btn"):
+                st.session_state.radar_lat = new_lat
+                st.session_state.radar_lon = new_lon
+                st.session_state.radar_last_click = (new_lat, new_lon)
+                st.rerun()
 
     with col_zoom:
         radar_zoom = st.slider("Zoom Level", min_value=3, max_value=10, value=5)
@@ -360,7 +384,7 @@ with tab4:
             key="radar_map_display",
         )
 
-        if map_data and map_data.get("last_clicked"):
+        if map_data and is_new_click(map_data.get("last_clicked"), "radar_last_click"):
             clicked = map_data["last_clicked"]
             st.session_state.radar_lat = clicked["lat"]
             st.session_state.radar_lon = clicked["lng"]
